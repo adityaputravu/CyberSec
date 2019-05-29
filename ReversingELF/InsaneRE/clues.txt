@@ -1,0 +1,4 @@
+Clue 1: Packed by UPX
+Clue 2: You can't use UPX -d nor can you just fix headers
+Clue 3: UPX loads binary into memory and unpacks it
+
