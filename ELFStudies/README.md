@@ -3,9 +3,9 @@ This is where I am going to keep all my tools that I develop while studying the 
 
 # ELF Segments
 
-parse_elf_segments.py
+elf64_parse_and_edit.py
 
-I developed this tool in order to parse elf segments and in order to aid me in extending segments 
+I developed this tool in order to parse elf segments and in order to extend and manipulate segment information. 
 
 ### Resources
 http://osr507doc.sco.com/en/topics/ELF_secthead.html#ELF_sh_type
