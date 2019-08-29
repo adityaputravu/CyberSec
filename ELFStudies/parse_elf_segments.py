@@ -39,13 +39,12 @@ def name_segments(elf, segments_dict):
     raw_shstrtab = elf[shstrtab[4]+1:shstrtab[4]+shstrtab[5]]
 
     # Each item, go to offset and loop through until null-byte is hit and give the sh_name that string
-    for k,v in segments_dict.items():
-        counter = 0
+   
+    for k, v in segments_dict.items():
         s = ' '
         while s[-1] != '\x00':
-            s += chr(raw_shstrtab[counter + segments_dict[k][0]])
-            counter += 1
-        segments_dict[k][0] = s[1:-1]
+            s += chr(raw_shstrtab[len(s)-1 + v[0]])
+        v[0] = s[1:-1]    
     return segments_dict
 
 def print_segments(segments_dict):
