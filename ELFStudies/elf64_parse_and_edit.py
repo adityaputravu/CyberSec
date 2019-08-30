@@ -67,11 +67,32 @@ def name_segments(elf):
         v[0] = s[1:-1]    
     return segments
 
-def print_segments(segments):
+def print_segments(segments, elf=b""):
+    """
+        Prints the segments in a pretty format
+
+        Dictionary segments:        The segments and their values
+        Bytes      elf:             The elf file
+
+        return Type: None
+    """
     for c,i in enumerate(segments.values()):
-        print(f"""
+        try:
+            print(f"""
 Number: {c}
-Section Header Table @ {hex(find_SHT(elf) + c*64)}
+Section Header Table @ {hex(find_SHT(elf) + c*64)}""")
+            print(f"""
+sh_name:    '{i[0]}'
+sh_type:    {hex(i[1])}
+sh_flags:   {hex(i[2])}
+SH_ADDR:    {hex(i[3])}
+SH_OFFSET:  {hex(i[4])}
+SH_SIZE:    {hex(i[5])}""")
+        except Exception as e:
+            if elf:
+                print(f"Error: {e}")
+            else:
+                print(f"""
 sh_name:    '{i[0]}'
 sh_type:    {hex(i[1])}
 sh_flags:   {hex(i[2])}
@@ -79,22 +100,24 @@ SH_ADDR:    {hex(i[3])}
 SH_OFFSET:  {hex(i[4])}
 SH_SIZE:    {hex(i[5])}""")
 
-def extend_data_segment(elf, size):
+def extend_segment(elf, name, size, fill=0x00):
     """
         Extends the .data section in an ELF binary
          
         bytes  elf:          The ELF file
+        string name:         The name of the segment
         int    size:         The size to extend by
+        int    fill:         The bytes to fill in
 
         return:      The elf bytes
         return type: Bytes
     """
     
     segments = name_segments(elf)
-    data_index = next(filter(lambda x: segments[x][0] == 'data', segments.keys()))
+    index = next(filter(lambda x: segments[x][0] == name, segments.keys()))
 
     # Edit segments after with the adjusted values
-    for i in range(data_index+1, len(segments)):
+    for i in range(index+1, len(segments)):
         segment = segments[i]
         segment[3] = segment[3] + size if segment[3] else segment[3] 
         segment[4] += size
@@ -104,12 +127,12 @@ def extend_data_segment(elf, size):
     elf[40:48] = struct.pack("<q", e_shoff)
 
     # Add new data
-    new_data = bytearray([0 for i in range(size)])
-    end_data_segment = segments[data_index][4]+segments[data_index][5]
+    new_data = bytearray([fill for i in range(size)])
+    end_data_segment = segments[index][4]+segments[index][5]
     elf = elf[:end_data_segment] + new_data + elf[end_data_segment:]
     
     # Edit the segment with new size
-    segments[data_index][5] += size
+    segments[index][5] += size
 
     # Write all the segments to the ELF in bytes
     raw_segments = elf[e_shoff:]
@@ -128,7 +151,7 @@ def set_segment_permissions(elf, name, permissions):
         Sets the segment permissions
 
         bytes  elf:          The ELF file
-        string name:         The name of the section
+        string name:         The name of the segment
         int    permissions:  The permissions (similar to unix permissions)
 
         return:      The elf bytes
@@ -149,20 +172,31 @@ def set_segment_permissions(elf, name, permissions):
     return elf
     
 # Extending data example
-# -----------------------
-# 
-elf = load_elf("./main")
-new_elf = extend_data_segment(elf, 0x1000)
-with open('./new_main', 'wb') as f:
-    f.write(new_elf)
+# --------------------------
+def extend_example():
+    elf = load_elf("./main")
+    new_elf = extend_segment(elf, 'fini', 0x1000, fill=0x90)
+    with open('./new_main', 'wb') as f:
+        f.write(new_elf)
 
 # Permissions data example
-# -----------------------
-elf = load_elf("./new_main")
-elf = set_segment_permissions(elf, 'data', 0x7)
-with open('./new_main', 'wb') as f:
-    f.write(elf)
+# --------------------------
+def perms_example():
+    elf = load_elf("./new_main")
+    elf = set_segment_permissions(elf, 'data', 0x7)
+    with open('./new_main', 'wb') as f:
+        f.write(elf)
 
+# Printing the segments info
+# --------------------------
+def print_example():
+    elf = load_elf("./new_main")
+    segments = name_segments(elf)
+    print_segments(segments)
+
+extend_example()
+perms_example()
+print_example()
 
 # Resources
 #
