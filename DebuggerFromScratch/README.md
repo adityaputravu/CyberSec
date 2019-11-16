@@ -8,4 +8,5 @@ Compiling
 
 ## new (test program)
 `nasm -f elf64 new.nasm`
+then
 `ld new.o -o new`
