@@ -10,6 +10,11 @@
 
 typedef unsigned char BYTE;
 
+/* Elf32 Base Types */
+typedef unsigned char 	Elf32_Byte;  // 1
+typedef short 		Elf32_Word;  // 2 
+typedef int 		Elf32_Dword; // 4
+
 /* Elf64 Base Types */
 typedef unsigned char 	Elf64_Byte;  // 1
 typedef short 		Elf64_Half;  // 2
@@ -32,13 +37,33 @@ struct e_header64{
 	Elf64_Half   e_shnum;
 	Elf64_Half   e_shstrndx;
 };
+struct e_header{
+	Elf32_Byte   e_ident[16];
+	Elf32_Word   e_type;
+	Elf32_Word   e_machine;
+	Elf32_Dword  e_version;
+	Elf32_Dword  e_entry;
+	Elf32_Dword  e_phoff;
+	Elf32_Dword  e_shoff;
+	Elf32_Dword  e_flags;
+	Elf32_Word   e_ehsize;
+	Elf32_Word   e_phentsize;
+	Elf32_Word   e_phnum;
+	Elf32_Word   e_shentsize;
+	Elf32_Word   e_shnum;
+	Elf32_Word   e_shstrndx;
+};
 
 extern char* read_bytes(FILE* fp, int offset, int bytes);
 extern char* read_bytes_backwards(FILE* fp, int offset, int bytes);
 extern int btoi(char* bytes, int n);
+extern int set(int * property, int size, FILE* fp, char* temp, int offset);
 
 extern bool is_elf(char *file);
-extern int elf_type(char *file);
 extern struct e_header64* elf64_header_struct(char *file);
+extern struct e_header* elf_header_struct(char *file);
+extern int elf_type_file(char *file);
+extern int elf_type_struct(struct e_header64* header);
+extern void print_elf_header(struct e_header64* header);
 
 #endif

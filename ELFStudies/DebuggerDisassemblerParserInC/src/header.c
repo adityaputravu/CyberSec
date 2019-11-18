@@ -1,9 +1,9 @@
 #include "header.h"
 
 extern char* read_bytes(FILE* fp, int offset, int bytes){
-	char* buffer = malloc(sizeof(char) * bytes);
+	char* buffer = calloc(bytes, sizeof(char));
 	fseek(fp, offset, SEEK_SET);
-	fgets(buffer, bytes+1, fp);
+	fgets(buffer, bytes, fp);
 	return buffer;
 }
 
@@ -21,7 +21,7 @@ extern int btoi(char* bytes, int n){
 	// Reads little endian as well
 	int sum = 0;
 	for(int i=0;i<n;++i){
-		sum += bytes[i] << i*8;
+		sum += bytes[i] << (i*8);
 	}
 	return sum;
 }
@@ -34,14 +34,14 @@ extern bool is_elf(char *file){
 	}
 	char buffer[4];
 	fseek(fp, 0, SEEK_SET);
-	fgets(&buffer, 4, fp);
+	fgets((char *)&buffer, 4, fp);
 	fclose(fp);
-	if(!strcmp(&buffer, "\x7fELF"))
+	if(!strcmp((char *)&buffer, "\x7fELF"))
 		return true;
 	return false;
 }
 
-extern int elf_type(char* file){
+extern int elf_type_file(char *file){
 	FILE *fp;
 	if((fp = fopen(file, "rb")) == NULL){
 		perror("Error opening file");
@@ -52,6 +52,32 @@ extern int elf_type(char* file){
 	type = fgetc(fp);
 	fclose(fp);
 	return type * 32;
+}
+
+
+extern int elf_type_struct(struct e_header64* header){
+	return header->e_ident[4];
+}
+
+extern void print_elf_header(struct e_header64* header){
+	printf("[*] e_ident:\t\t\t\t[ ");
+	for(int i=0; i<16; ++i)
+		printf("%02x ", header->e_ident[i]);
+	puts("]");
+	printf("[*] ELF:\t\t\t\tELF%d\n", elf_type_struct(header)*32);
+	printf("[*] Entry:\t\t\t\t0x%08x\n", header->e_entry);
+	printf("[*] Program Header Offset:\t\t0x%08x\n", header->e_phoff);
+	printf("[*] Section Header Offset:\t\t0x%08x\n", header->e_shoff);
+	printf("[*] Elf Header Size:\t\t\t0x%08x\n", header->e_ehsize);
+	printf("[*] Program Headers:\t\t\t%d\n", header->e_phnum);
+	printf("[*] Section Headers:\t\t\t%d\n", header->e_shnum);
+}
+
+extern int set(int * property, int size, FILE* fp, char* temp, int offset){
+	temp = read_bytes(fp, offset, size);
+	*property = btoi(temp, size);
+	free(temp);
+	return offset+=size;
 }
 
 extern struct e_header64* elf64_header_struct(char *file){
@@ -68,120 +94,70 @@ extern struct e_header64* elf64_header_struct(char *file){
 	struct e_header64* header = malloc(sizeof(struct e_header64));	
 
 	char *temp; 
-	int size;
-	signed int offset = -1 * sizeof(header->e_ident);
-
+	signed int offset = 0;
+	
 	// e_ident
-	temp = read_bytes(fp, offset+=sizeof(header->e_ident), sizeof(header->e_ident));
-	strncpy(header->e_ident, temp, sizeof(header->e_ident));	
+	temp = read_bytes(fp, offset, sizeof(header->e_ident));
+	strncpy(header->e_ident, temp, sizeof(header->e_ident));
 	free(temp);
 
-	int set(char* property, FILE* fp, char* temp, int offset){
-		int size = sizeof(*property);
-		temp = read_bytes(fp, offset, size);
-		*property = btoi(temp, size);
-		free(temp);
-		return offset+=size;
-	}
+	offset += 16;
 
-	offset = set(header->e_type, fp, temp, offset);
-	offset = set(header->e_machine, fp, temp, offset);
-	offset = set(header->e_version, fp, temp, offset);
-	offset = set(header->e_entry, fp, temp, offset);
-	offset = set(header->e_phoff, fp, temp, offset);
-	offset = set(header->e_shoff, fp, temp, offset);
-	offset = set(header->e_flags, fp, temp, offset);
-
-	/*
-	// e_type
-	size = sizeof(header->e_type);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_type = btoi(temp, size); 
-	free(temp);
-
-	// e_machine
-	size = sizeof(header->e_machine);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_machine = btoi(temp, size); 
-	free(temp);
-	
-	// e_version
-	size = sizeof(header->e_version);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_version = btoi(temp, size); 
-	free(temp);
-	
-	// e_entry
-	size = sizeof(header->e_entry);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_entry = btoi(temp, size); 
-	free(temp);
-	
-	// e_phoff
-	size = sizeof(header->e_phoff);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_phoff = btoi(temp, size); 
-	free(temp);
-	
-	// e_shoff
-	size = sizeof(header->e_shoff);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_shoff = btoi(temp, size); 
-	free(temp);
-	
-	// e_flags
-	size = sizeof(header->e_flags);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_flags = btoi(temp, size); 
-	free(temp);
-	
-	// e_ehsize
-	size = sizeof(header->e_ehsize);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_ehsize = btoi(temp, size); 
-	free(temp);
-	
-	// e_phentsize
-	size = sizeof(header->e_phentsize);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_phentsize = btoi(temp, size); 
-	free(temp);
-
-	// e_phnum
-	size = sizeof(header->e_phnum);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_phnum = btoi(temp, size); 
-	free(temp);
-
-	// e_shentsize
-	size = sizeof(header->e_shentsize);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_shentsize = btoi(temp, size); 
-	free(temp);
-
-	// e_shnum
-	size = sizeof(header->e_shnum);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_shnum = btoi(temp, size); 
-	free(temp);
-
-	// e_shstrndx
-	size = sizeof(header->e_shstrndx);
-	temp = read_bytes(fp, offset+=size, size);
-	header->e_shstrndx = btoi(temp, size); 
-	free(temp);
-
-	*/
+	offset = set(&(header->e_type),      sizeof(header->e_type), fp, temp, offset);
+	offset = set(&(header->e_machine),   sizeof(header->e_machine), fp, temp, offset);
+	offset = set(&(header->e_version),   sizeof(header->e_version), fp, temp, offset);
+	offset = set(&(header->e_entry),     sizeof(header->e_entry), fp, temp, offset);
+	offset = set(&(header->e_phoff),     sizeof(header->e_phoff), fp, temp, offset);
+	offset = set(&(header->e_shoff),     sizeof(header->e_shoff), fp, temp, offset);
+	offset = set(&(header->e_flags),     sizeof(header->e_flags), fp, temp, offset);
+	offset = set(&(header->e_ehsize),    sizeof(header->e_ehsize), fp, temp, offset);
+	offset = set(&(header->e_phentsize), sizeof(header->e_phentsize), fp, temp, offset);
+	offset = set(&(header->e_phnum),     sizeof(header->e_phnum), fp, temp, offset);
+	offset = set(&(header->e_shentsize), sizeof(header->e_shentsize), fp, temp, offset);
+	offset = set(&(header->e_shnum),     sizeof(header->e_shnum), fp, temp, offset);
+	offset = set(&(header->e_shstrndx),  sizeof(header->e_shstrndx), fp, temp, offset);
 	
 	fclose(fp);
-
-	printf("* [%s]\n", header->e_ident);
-	printf("* %08x\n", header->e_type);
-	printf("* %08x\n", header->e_machine);
-	printf("* %08x\n", header->e_version);
-	printf("* %08x\n", header->e_entry);
-	printf("* %08x\n", header->e_phoff);
-	printf("* %08x\n", header->e_shoff);
-	printf("* %08x\n", header->e_flags);
+	return header;
 }
+
+extern struct e_header* elf_header_struct(char *file){
+	if(is_elf(file)){
+		perror("Not an elf file!\n");
+		return NULL;
+	}
+	FILE *fp;
+	if((fp = fopen(file, "rb")) == NULL){
+		perror("Error opening file");
+		return NULL;
+	}
+		
+	struct e_header* header = malloc(sizeof(struct e_header));	
+	char *temp; 
+	signed int offset = 0;
+	
+	// e_ident
+	temp = read_bytes(fp, offset, sizeof(header->e_ident));
+	strncpy(header->e_ident, temp, sizeof(header->e_ident));
+	free(temp);
+	offset += 16;
+
+	offset = set(&(header->e_type),      sizeof(header->e_type), fp, temp, offset);
+	offset = set(&(header->e_machine),   sizeof(header->e_machine), fp, temp, offset);
+	offset = set(&(header->e_version),   sizeof(header->e_version), fp, temp, offset);
+	offset = set(&(header->e_entry),     sizeof(header->e_entry), fp, temp, offset);
+	offset = set(&(header->e_phoff),     sizeof(header->e_phoff), fp, temp, offset);
+	offset = set(&(header->e_shoff),     sizeof(header->e_shoff), fp, temp, offset);
+	offset = set(&(header->e_flags),     sizeof(header->e_flags), fp, temp, offset);
+	offset = set(&(header->e_ehsize),    sizeof(header->e_ehsize), fp, temp, offset);
+	offset = set(&(header->e_phentsize), sizeof(header->e_phentsize), fp, temp, offset);
+	offset = set(&(header->e_phnum),     sizeof(header->e_phnum), fp, temp, offset);
+	offset = set(&(header->e_shentsize), sizeof(header->e_shentsize), fp, temp, offset);
+	offset = set(&(header->e_shnum),     sizeof(header->e_shnum), fp, temp, offset);
+	offset = set(&(header->e_shstrndx),  sizeof(header->e_shstrndx), fp, temp, offset);
+	
+	fclose(fp);
+	return header;
+}
+
 
