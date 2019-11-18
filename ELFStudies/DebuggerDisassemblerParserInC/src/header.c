@@ -59,19 +59,6 @@ extern int elf_type_struct(struct e_header64* header){
 	return header->e_ident[4];
 }
 
-extern void print_elf_header(struct e_header64* header){
-	printf("[*] e_ident:\t\t\t\t[ ");
-	for(int i=0; i<16; ++i)
-		printf("%02x ", header->e_ident[i]);
-	puts("]");
-	printf("[*] ELF:\t\t\t\tELF%d\n", elf_type_struct(header)*32);
-	printf("[*] Entry:\t\t\t\t0x%08x\n", header->e_entry);
-	printf("[*] Program Header Offset:\t\t0x%08x\n", header->e_phoff);
-	printf("[*] Section Header Offset:\t\t0x%08x\n", header->e_shoff);
-	printf("[*] Elf Header Size:\t\t\t0x%08x\n", header->e_ehsize);
-	printf("[*] Program Headers:\t\t\t%d\n", header->e_phnum);
-	printf("[*] Section Headers:\t\t\t%d\n", header->e_shnum);
-}
 
 extern int set(int * property, int size, FILE* fp, char* temp, int offset){
 	temp = read_bytes(fp, offset, size);
@@ -94,7 +81,7 @@ extern struct e_header64* elf64_header_struct(char *file){
 	struct e_header64* header = malloc(sizeof(struct e_header64));	
 
 	char *temp; 
-	signed int offset = 0;
+	int offset = 0;
 	
 	// e_ident
 	temp = read_bytes(fp, offset, sizeof(header->e_ident));
@@ -134,7 +121,7 @@ extern struct e_header* elf_header_struct(char *file){
 		
 	struct e_header* header = malloc(sizeof(struct e_header));	
 	char *temp; 
-	signed int offset = 0;
+	int offset = 0;
 	
 	// e_ident
 	temp = read_bytes(fp, offset, sizeof(header->e_ident));
@@ -160,4 +147,77 @@ extern struct e_header* elf_header_struct(char *file){
 	return header;
 }
 
+extern void print_elf_header(struct e_header64* header){
+	printf("[*] e_ident:\t\t\t\t[ ");
+	for(int i=0; i<16; ++i)
+		printf("%02x ", header->e_ident[i]);
+	puts("]");
+	printf("[*] ELF:\t\t\t\tELF%d\n", elf_type_struct(header)*32);
+	printf("[*] Entry:\t\t\t\t0x%x\n", header->e_entry);
+	printf("[*] Program Header Offset:\t\t0x%x\n", header->e_phoff);
+	printf("[*] Section Header Offset:\t\t0x%x\n", header->e_shoff);
+	printf("[*] Elf Header Size:\t\t\t0x%x\n", header->e_ehsize);
+	printf("[*] Program Headers:\t\t\t%d\n", header->e_phnum);
+	printf("[*] Section Headers:\t\t\t%d\n", header->e_shnum);
+}
+extern struct p_header64* elf64_program_struct(char *file, int e_phoff){
+	if(is_elf(file)){
+		perror("Not an elf file!\n");
+		return NULL;
+	}
+	FILE *fp;
+	if((fp = fopen(file, "rb")) == NULL){
+		perror("Error opening file");
+		return NULL;
+	}
+		
+	struct p_header64* header = malloc(sizeof(struct p_header64));	
+	char *temp; 
+	int offset = e_phoff;
+
+	offset = set(&(header->p_type),   sizeof(header->p_type), fp, temp, offset);
+	offset = set(&(header->p_flags),  sizeof(header->p_flags), fp, temp, offset);
+	offset = set(&(header->p_offset), sizeof(header->p_offset), fp, temp, offset);
+	offset = set(&(header->p_vaddr),  sizeof(header->p_vaddr), fp, temp, offset);
+	offset = set(&(header->p_paddr),  sizeof(header->p_paddr), fp, temp, offset);
+	offset = set(&(header->p_filesz), sizeof(header->p_filesz), fp, temp, offset);
+	
+	return header;
+}
+
+extern struct p_header* elf_program_struct(char *file, int e_phoff){
+	if(is_elf(file)){
+		perror("Not an elf file!\n");
+		return NULL;
+	}
+	FILE *fp;
+	if((fp = fopen(file, "rb")) == NULL){
+		perror("Error opening file");
+		return NULL;
+	}
+		
+	struct p_header* header = malloc(sizeof(struct p_header));	
+	char *temp; 
+	int offset = e_phoff;
+
+	offset = set(&(header->p_type),   sizeof(header->p_type), fp, temp, offset);
+	offset = set(&(header->p_flags),  sizeof(header->p_flags), fp, temp, offset);
+	offset = set(&(header->p_offset), sizeof(header->p_offset), fp, temp, offset);
+	offset = set(&(header->p_vaddr),  sizeof(header->p_vaddr), fp, temp, offset);
+	offset = set(&(header->p_paddr),  sizeof(header->p_paddr), fp, temp, offset);
+	offset = set(&(header->p_filesz), sizeof(header->p_filesz), fp, temp, offset);
+	
+	return header;
+}
+
+extern void print_program_header(struct p_header64* header){
+	printf("Program Header Structure:\n");
+	printf("[*] p_type:\t\t\t\t0x%x\n", header->p_type);
+	printf("[*] p_flags:\t\t\t\t0x%x\n", header->p_flags);
+	printf("[*] p_offset:\t\t\t\t0x%x\n", header->p_offset);
+	printf("[*] p_vaddr:\t\t\t\t0x%x\n", header->p_vaddr);
+	printf("[*] p_paddr:\t\t\t\t0x%x\n", header->p_paddr);
+	printf("[*] p_filesz:\t\t\t\t0x%x\n", header->p_filesz);
+	printf("[*] p_memsz:\t\t\t\t0x%x\n", header->p_memsz);
+}
 
